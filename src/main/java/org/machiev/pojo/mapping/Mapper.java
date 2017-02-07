@@ -1,7 +1,9 @@
 package org.machiev.pojo.mapping;
 
 import java.beans.IntrospectionException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,6 +27,41 @@ public class Mapper {
         return outputMap;
     }
 
+    /**
+     * Creates object of specified class and sets fields to values contained in a map.
+     * @param fieldsMap map containing field's mapped name and field's value.
+     * @param pojoClass object's class.
+     * @return created and filled instance of supplied class.
+     */
+    public static <T> T toPojo(Map<String, Object> fieldsMap, Class<T> pojoClass) {
+        try {
+            Constructor<T> constructor = pojoClass.getDeclaredConstructor();
+            return toPojo(fieldsMap, constructor.newInstance());
+        } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+            throw new IllegalArgumentException("Cannot create an object", e);
+        }
+    }
+
+    /**
+     * Sets fields of supplied object to values contained in a map.
+     * @param fieldsMap map containing field's mapped name and field's value.
+     * @param outputPojo object to be filled in.
+     * @return filled supplied object.
+     */
+    public static <T> T toPojo(Map<String, Object> fieldsMap, T outputPojo) {
+        Field[] fields = outputPojo.getClass().getDeclaredFields();
+
+        for (Field field : fields) {
+            String mappingKey = getMappingKey(field);
+            if (!mappingKey.isEmpty()) {
+                Object value = fieldsMap.get(mappingKey);
+                //TODO: add check if map contains a value
+                setFieldValue(field, outputPojo, value);
+            }
+        }
+        return outputPojo;
+    }
+
     private static String getMappingKey(Field field) {
         Mapped[] mappedAnnotations = field.getAnnotationsByType(Mapped.class);
         if (mappedAnnotations.length == 0) {
@@ -45,6 +82,16 @@ public class Mapper {
             return field.get(pojo);
         } catch (IllegalAccessException e) {
             throw new IllegalArgumentException("Inaccessible or non-instance field", e);
+        }
+    }
+
+    private static void setFieldValue(Field field, Object outputPojo, Object value) {
+        field.setAccessible(true);
+        try {
+            //TODO: handle primitive types - null case
+            field.set(outputPojo, value);
+        } catch (IllegalAccessException e) {
+            throw new IllegalArgumentException("Cannot set field's value", e);
         }
     }
 
