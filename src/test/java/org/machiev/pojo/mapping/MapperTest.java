@@ -9,6 +9,7 @@ import java.util.Map;
 import static java.util.Collections.singletonList;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
@@ -18,8 +19,9 @@ public class MapperTest {
     public void shouldMapCorrectPojo() throws Exception {
         //given
         TestPojo pojo = new TestPojo();
+        Mapper mapper = new Mapper.Builder().build();
         //when
-        Map<String, Object> objectMap = Mapper.toMap(pojo);
+        Map<String, Object> objectMap = mapper.toMap(pojo);
         //then
         assertThat(objectMap.size(), is(7));
         assertThat(objectMap.keySet(), hasItems("stringField", "integerField", "intField", "someLong", "o", "staticString", "stringList"));
@@ -30,8 +32,9 @@ public class MapperTest {
     public void shouldReturnEmptyMapWhenNoFieldsInPojo() throws Exception {
         //given
         TestPojo_NoFields pojo = new TestPojo_NoFields();
+        Mapper mapper = new Mapper.Builder().build();
         //when
-        Map<String, Object> objectMap = Mapper.toMap(pojo);
+        Map<String, Object> objectMap = mapper.toMap(pojo);
         //then
         assertTrue(objectMap.isEmpty());
     }
@@ -40,11 +43,44 @@ public class MapperTest {
     public void shouldReturnMapWithDeclaredFieldsOnly() throws Exception {
         //given
         TestPojo_Subclass pojo = new TestPojo_Subclass();
+        Mapper mapper = new Mapper.Builder().build();
         //when
-        Map<String, Object> objectMap = Mapper.toMap(pojo);
+        Map<String, Object> objectMap = mapper.toMap(pojo);
         //then
         assertThat(objectMap.size(), is(1));
         assertThat(objectMap.get("subclassField"), is("subclass"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldThrowExceptionWhenMapMustSupplyAllValues() throws Exception {
+        //given
+        Map<String, Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("stringField", "some text");
+        Mapper mapper = new Mapper.Builder().withMapMustSupplyAllValues().build();
+        //when
+        mapper.toPojo(fieldsMap, TestPojo.class);
+    }
+
+    @Test(expected = Exception.class)
+    public void shouldThrowExceptionWhenPrimitiveIsNull() throws Exception {
+        //given
+        Map<String, Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("intField", null);
+        Mapper mapper = new Mapper.Builder().withPrimitiveNotNull().build();
+        //when
+        mapper.toPojo(fieldsMap, TestPojo.class);
+    }
+
+    @Test
+    public void shouldConvertNullToPrimitiveDefaultValue() throws Exception {
+        //given
+        Map<String, Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("intField", null);
+        Mapper mapper = new Mapper.Builder().build();
+        //when
+        TestPojo testPojo = mapper.toPojo(fieldsMap, TestPojo.class);
+        //then
+        assertThat(testPojo.getIntField(), is(0));
     }
 
     @Test
@@ -53,16 +89,17 @@ public class MapperTest {
         Map<String, Object> fieldsMap = new HashMap<>();
         fieldsMap.put("stringField", "some text");
         fieldsMap.put("integerField", 789987);
-//        fieldsMap.put("intField", 123321);
+        fieldsMap.put("intField", 123321);
         fieldsMap.put("someLong", 111L);
+        Mapper mapper = new Mapper.Builder().build();
         //when
-
-        TestPojo emptyPojo = Mapper.toPojo(fieldsMap, TestPojo.class);
+        TestPojo testPojo = mapper.toPojo(fieldsMap, TestPojo.class);
         //then
-        assertThat(emptyPojo.getStringField(), is("some text"));
-        assertThat(emptyPojo.getIntegerField(), is(789987));
-        assertThat(emptyPojo.getIntField(), is(123321));
-        assertThat(emptyPojo.getLongField(), is(111L));
+        assertThat(testPojo.getStringField(), is("some text"));
+        assertThat(testPojo.getIntegerField(), is(789987));
+        assertThat(testPojo.getIntField(), is(123321));
+        assertThat(testPojo.getLongField(), is(111L));
+        assertNull(testPojo.getO());
     }
 }
 
@@ -106,6 +143,10 @@ class TestPojo {
 
     public Long getLongField() {
         return longField;
+    }
+
+    public Object getO() {
+        return o;
     }
 }
 
