@@ -1,12 +1,31 @@
 package org.machiev.pojo.mapping;
 
-import java.beans.IntrospectionException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Converts an object into a map containing field's mapping name as a key and field's reference as a value.
+ *
+ * <pre>
+ *     class SomePojo {
+ *        {@code @Mapped}
+ *         private String stringField = "some string";
+ *        {@code @Mapped(keyName = "intValue")}
+ *         private Integer integerField = 42;
+ *     }
+ *     Mapper mapper = new Mapper.Builder().build();
+ *    {@code Map<String, Object> map = mapper.toMap(new SomePojo());}
+ *
+ * </pre>
+ * will create a map with two entries:
+ * <pre>
+ * "stringField" -> "some string"
+ * "intValue" -> "42"
+ * </pre>
+ */
 public class Mapper {
 
     private boolean primitiveAcceptsNull;
@@ -47,11 +66,21 @@ public class Mapper {
         this.mapMustSupplyAllValues = mapMustSupplyAllValues;
     }
 
-    public Map<String, Object> toMap(Object pojo) throws IllegalAccessException, IntrospectionException {
+    /**
+     * Creates a map of fields from supplied object. A key is a field's mapped name and value is a field's reference.
+     * @param pojo an object to create map from.
+     * @return a map containing field's mapped name and field's value.
+     */
+    public Map<String, Object> toMap(Object pojo) {
         return toMap(pojo, new HashMap<>());
     }
 
-    public Map<String, Object> toMap(Object pojo, Map<String, Object> outputMap) throws IllegalAccessException, IntrospectionException {
+    /**
+     * Fills in a supplied map with fields from a supplied object. A key is a field's mapped name and value is a field's reference.
+     * @param pojo an object to create map from.
+     * @return a map containing field's mapped name and field's value.
+     */
+    public Map<String, Object> toMap(Object pojo, Map<String, Object> outputMap) {
         Field[] fields = pojo.getClass().getDeclaredFields();
 
         for (Field field : fields) {
@@ -86,6 +115,7 @@ public class Mapper {
      * @param outputPojo object to be filled in.
      * @return filled supplied object.
      * @throws IllegalArgumentException if map does not contain a value for a mapped field and mapMustSupplyAllValues is true.
+     * @throws IllegalArgumentException if map contain null value for a field with primitive type and primitiveNotNull mode is selected.
      */
     public <T> T toPojo(Map<String, Object> fieldsMap, T outputPojo) {
         Field[] fields = outputPojo.getClass().getDeclaredFields();
